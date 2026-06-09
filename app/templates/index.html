@@ -33,14 +33,28 @@
             event.preventDefault();
             stockInfo.className = "";
             analysis.textContent = "Loading...";
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 45000);
 
             const symbol = document.getElementById("symbol").value;
-            const response = await fetch("/analyze", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ symbol })
-            });
-            const data = await response.json();
+            let response;
+            let data;
+            try {
+                response = await fetch("/analyze", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ symbol }),
+                    signal: controller.signal
+                });
+                data = await response.json();
+            } catch (error) {
+                stockInfo.className = "error";
+                stockInfo.textContent = "Analysis timed out or the server did not respond.";
+                analysis.textContent = "";
+                return;
+            } finally {
+                clearTimeout(timeout);
+            }
 
             if (!response.ok) {
                 stockInfo.className = "error";

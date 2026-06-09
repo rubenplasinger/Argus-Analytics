@@ -8,7 +8,7 @@ class OpenAIAnalysisClient:
         if not api_key:
             raise RuntimeError("OPENAI_API_KEY is not configured")
 
-        client = OpenAI(api_key=api_key)
+        client = OpenAI(api_key=api_key, timeout=20.0, max_retries=1)
         model = current_app.config.get("OPENAI_MODEL", "gpt-4o")
 
         prompt = (
@@ -41,7 +41,7 @@ class OpenAIAnalysisClient:
                 temperature=0.3,
                 max_tokens=450,
             )
-        except OpenAIError as exc:
+        except (OpenAIError, TypeError) as exc:
             raise RuntimeError(f"OpenAI analysis failed: {exc}") from exc
 
         return response.choices[0].message.content.strip()
