@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Argus Analytics MVP</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; max-width: 800px; }
+        input, button { font-size: 16px; padding: 8px; }
+        button { cursor: pointer; }
+        pre { background: #f4f4f4; padding: 16px; white-space: pre-wrap; }
+        .error { color: #a00000; }
+    </style>
+</head>
+<body>
+    <h1>Stock Analysis</h1>
+    <form id="analysis-form">
+        <input id="symbol" name="symbol" placeholder="AAPL" required>
+        <button type="submit">Analyze</button>
+    </form>
+
+    <h2>Stock Information</h2>
+    <pre id="stock-info">No analysis yet.</pre>
+
+    <h2>AI Analysis</h2>
+    <pre id="analysis"></pre>
+
+    <script>
+        const form = document.getElementById("analysis-form");
+        const stockInfo = document.getElementById("stock-info");
+        const analysis = document.getElementById("analysis");
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            stockInfo.className = "";
+            analysis.textContent = "Loading...";
+
+            const symbol = document.getElementById("symbol").value;
+            const response = await fetch("/analyze", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ symbol })
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                stockInfo.className = "error";
+                stockInfo.textContent = data.error || "Request failed";
+                analysis.textContent = "";
+                return;
+            }
+
+            stockInfo.textContent = JSON.stringify({
+                symbol: data.symbol,
+                company_name: data.company_name,
+                created_at: data.created_at,
+                stock_data: data.stock_data
+            }, null, 2);
+            analysis.textContent = data.analysis;
+        });
+    </script>
+</body>
+</html>
