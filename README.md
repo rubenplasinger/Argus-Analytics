@@ -49,6 +49,7 @@ Response:
   "company_name": "Apple Inc.",
   "analysis": "...",
   "created_at": "...",
+  "cached": false,
   "stock_data": {
     "market_cap": 123,
     "pe_ratio": 30.5,

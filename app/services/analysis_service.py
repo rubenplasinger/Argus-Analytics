@@ -1,3 +1,5 @@
+from datetime import datetime, time, timezone
+
 from app.db import db
 from app.integrations.openai_client import OpenAIAnalysisClient
 from app.models import StockAnalysis, StockData
@@ -14,6 +16,45 @@ class AnalysisService:
         self.ai_client = ai_client or OpenAIAnalysisClient()
 
     def analyze(self, symbol: str) -> dict:
+        symbol = symbol.strip().upper()
+        today = datetime.now(timezone.utc).date()
+        today_start = datetime.combine(today, time.min, tzinfo=timezone.utc)
+        today_end = datetime.combine(today, time.max, tzinfo=timezone.utc)
+
+        cached_analysis = (
+            StockAnalysis.query.filter(
+                StockAnalysis.symbol == symbol,
+                StockAnalysis.created_at >= today_start,
+                StockAnalysis.created_at <= today_end,
+            )
+            .order_by(StockAnalysis.created_at.desc())
+            .first()
+        )
+
+        if cached_analysis:
+            cached_stock = (
+                StockData.query.filter(
+                    StockData.symbol == symbol,
+                    StockData.created_at >= today_start,
+                    StockData.created_at <= today_end,
+                )
+                .order_by(StockData.created_at.desc())
+                .first()
+            )
+
+            return {
+                "symbol": cached_analysis.symbol,
+                "company_name": cached_analysis.company_name,
+                "analysis": cached_analysis.analysis_text,
+                "created_at": cached_analysis.created_at.isoformat(),
+                "cached": True,
+                "stock_data": {
+                    "market_cap": cached_stock.market_cap if cached_stock else None,
+                    "pe_ratio": cached_stock.pe_ratio if cached_stock else None,
+                    "current_price": cached_stock.current_price if cached_stock else None,
+                },
+            }
+
         stock = self.stock_service.get_stock_data(symbol)
         analysis_text = self.ai_client.generate_analysis(stock)
 
@@ -37,6 +78,7 @@ class AnalysisService:
             "company_name": analysis_record.company_name,
             "analysis": analysis_record.analysis_text,
             "created_at": analysis_record.created_at.isoformat(),
+            "cached": False,
             "stock_data": {
                 "market_cap": stock_record.market_cap,
                 "pe_ratio": stock_record.pe_ratio,
