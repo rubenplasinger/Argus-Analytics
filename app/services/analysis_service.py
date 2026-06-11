@@ -42,6 +42,18 @@ class AnalysisService:
                 .first()
             )
 
+            if cached_stock is None or cached_stock.pe_ratio is None:
+                stock = self.stock_service.get_stock_data(symbol)
+                cached_stock = StockData(
+                    symbol=stock["symbol"],
+                    company_name=stock["company_name"],
+                    market_cap=stock.get("market_cap"),
+                    pe_ratio=stock.get("pe_ratio"),
+                    current_price=stock.get("current_price"),
+                )
+                db.session.add(cached_stock)
+                db.session.commit()
+
             return {
                 "symbol": cached_analysis.symbol,
                 "company_name": cached_analysis.company_name,

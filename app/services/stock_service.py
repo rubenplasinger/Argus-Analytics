@@ -1,4 +1,5 @@
 import re
+import time
 
 import requests
 import yfinance as yf
@@ -37,6 +38,8 @@ class StockService:
                 f"could not retrieve price data for symbol {symbol}; Yahoo Finance may be rate limiting requests"
             )
 
+        eps = self._get_eps(symbol)
+        pe_ratio = self._calculate_pe_ratio(current_price, eps)
         company_name = (
             chart_meta.get("longName")
             or chart_meta.get("shortName")
@@ -49,7 +52,7 @@ class StockService:
             "symbol": symbol,
             "company_name": company_name,
             "market_cap": info.get("marketCap") or fast_info.get("market_cap"),
-            "pe_ratio": info.get("trailingPE") or info.get("forwardPE"),
+            "pe_ratio": pe_ratio or info.get("trailingPE") or info.get("forwardPE"),
             "current_price": float(current_price),
             "sector": info.get("sector"),
             "industry": info.get("industry"),
@@ -116,3 +119,55 @@ class StockService:
             return results[0].get("meta") or {}
         except (RequestException, KeyError, ValueError, TypeError):
             return {}
+
+    def _get_eps(self, symbol: str) -> float | None:
+        url = f"https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{symbol}"
+        params = {
+            "symbol": symbol,
+            "type": "quarterlyDilutedEPS,annualDilutedEPS",
+            "period1": 0,
+            "period2": int(time.time()),
+        }
+        headers = {"User-Agent": "Mozilla/5.0"}
+
+        try:
+            response = requests.get(url, params=params, headers=headers, timeout=5)
+            response.raise_for_status()
+            payload = response.json()
+            results = payload.get("timeseries", {}).get("result") or []
+        except (RequestException, KeyError, ValueError, TypeError):
+            return None
+
+        quarterly_eps = []
+        annual_eps = []
+
+        for result in results:
+            quarterly_eps.extend(result.get("quarterlyDilutedEPS") or [])
+            annual_eps.extend(result.get("annualDilutedEPS") or [])
+
+        quarterly_values = self._extract_eps_values(quarterly_eps)
+        if len(quarterly_values) >= 4:
+            return sum(quarterly_values[-4:])
+
+        annual_values = self._extract_eps_values(annual_eps)
+        if annual_values:
+            return annual_values[-1]
+
+        return None
+
+    def _extract_eps_values(self, rows: list[dict]) -> list[float]:
+        sorted_rows = sorted(rows, key=lambda row: row.get("asOfDate") or "")
+        values = []
+
+        for row in sorted_rows:
+            raw_value = (row.get("reportedValue") or {}).get("raw")
+            if raw_value is not None:
+                values.append(float(raw_value))
+
+        return values
+
+    def _calculate_pe_ratio(self, current_price: float, eps: float | None) -> float | None:
+        if eps in (None, 0):
+            return None
+
+        return round(float(current_price) / eps, 2)
