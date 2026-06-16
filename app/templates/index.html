@@ -1,76 +1,788 @@
-<!doctype html>
-<html lang="en">
+<!--In zeile 800 ist API -->
+
+<!DOCTYPE html>
+<html lang="de">
 <head>
-    <meta charset="utf-8">
-    <title>Argus Analytics MVP</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; max-width: 800px; }
-        input, button { font-size: 16px; padding: 8px; }
-        button { cursor: pointer; }
-        pre { background: #f4f4f4; padding: 16px; white-space: pre-wrap; }
-        .error { color: #a00000; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Argus Analytics</title>
+<style>
+  :root {
+    --bg: #0d0f14;
+    --bg-surface: #141720;
+    --bg-card: #1a1e2b;
+    --bg-card-hover: #1f2436;
+    --accent: #4f8ef7;
+    --accent-dim: #2a4d99;
+    --accent-glow: rgba(79, 142, 247, 0.15);
+    --text-primary: #e8ecf5;
+    --text-secondary: #8892aa;
+    --text-muted: #545e72;
+    --border: rgba(255,255,255,0.07);
+    --border-accent: rgba(79, 142, 247, 0.3);
+    --green: #2ecc8a;
+    --green-dim: rgba(46, 204, 138, 0.12);
+    --red: #e85555;
+    --red-dim: rgba(232, 85, 85, 0.12);
+    --amber: #f0a83a;
+    --sidebar-width: 220px;
+    --topbar-height: 52px;
+    --radius: 14px;
+    --font: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text-primary);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── TOPBAR ── */
+  #topbar {
+    height: var(--topbar-height);
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    flex-shrink: 0;
+    z-index: 100;
+    gap: 12px;
+  }
+
+  #sidebar-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    transition: background 0.15s, color 0.15s;
+  }
+  #sidebar-toggle:hover { background: var(--bg-card); color: var(--text-primary); }
+
+  #logo-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  #logo-icon {
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(135deg, var(--accent) 0%, #7b5cf7 100%);
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.5px;
+    flex-shrink: 0;
+  }
+
+  #logo-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.2px;
+  }
+
+  #logo-text span {
+    color: var(--accent);
+  }
+
+  #topbar-nav {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  #topbar-nav a {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    padding: 5px 10px;
+    border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
+  }
+  #topbar-nav a:hover { background: var(--bg-card); color: var(--text-primary); }
+  #topbar-nav .sep { color: var(--text-muted); font-size: 11px; }
+
+  /* ── BODY LAYOUT ── */
+  #layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    width: var(--sidebar-width);
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    transition: width 0.25s cubic-bezier(0.4,0,0.2,1), opacity 0.2s;
+    overflow: hidden;
+  }
+
+  #sidebar.collapsed {
+    width: 0;
+    opacity: 0;
+    border-right: none;
+  }
+
+  #sidebar-header {
+    padding: 14px 16px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    white-space: nowrap;
+  }
+
+  #history-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 8px 16px;
+  }
+
+  #history-list::-webkit-scrollbar { width: 4px; }
+  #history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .history-item:hover { background: var(--bg-card-hover); }
+  .history-item:active { background: var(--bg-card); }
+
+  .history-ticker {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    min-width: 38px;
+  }
+
+  .history-name {
+    font-size: 12px;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .history-empty {
+    padding: 20px 16px;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  #sidebar-footer {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  /* ── MAIN ── */
+  #main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 20px;
+    gap: 16px;
+  }
+
+  /* ── SEARCH ROW ── */
+  #search-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  #search-wrap {
+    position: relative;
+    flex: 1;
+    max-width: 420px;
+  }
+
+  #search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+
+  #search-input {
+    width: 100%;
+    height: 42px;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-family: var(--font);
+    font-size: 14px;
+    padding: 0 44px 0 42px;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  #search-input::placeholder {
+    color: var(--text-muted);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  #search-input:focus {
+    border-color: var(--accent);
+    background: var(--bg-card-hover);
+  }
+
+  #search-btn {
+    height: 42px;
+    padding: 0 18px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    white-space: nowrap;
+  }
+  #search-btn:hover { opacity: 0.88; }
+  #search-btn:active { transform: scale(0.97); }
+
+  #api-status {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--amber);
+  }
+  .status-dot.live { background: var(--green); }
+
+  /* ── CONTENT GRID ── */
+  #content-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 16px;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* ── STOCK DATA PANEL ── */
+  #stock-panel {
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #stock-header {
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  #stock-symbol-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+
+  #stock-symbol {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+  }
+
+  #stock-name {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  #stock-price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  #stock-price {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -1px;
+  }
+
+  #stock-change {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+  }
+
+  .change-up { background: var(--green-dim); color: var(--green); }
+  .change-down { background: var(--red-dim); color: var(--red); }
+  .change-neutral { background: rgba(255,255,255,0.06); color: var(--text-muted); }
+
+  #stock-body {
+    padding: 14px 18px;
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #stock-body::-webkit-scrollbar { width: 3px; }
+  #stock-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .metric-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-top: 6px;
+    margin-bottom: 2px;
+  }
+
+  .metric-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .metric-row:last-child { border-bottom: none; }
+
+  .metric-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .metric-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .metric-value.up { color: var(--green); }
+  .metric-value.down { color: var(--red); }
+
+  /* Range bar */
+  .range-bar-wrap {
+    margin: 2px 0 8px;
+  }
+  .range-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    position: relative;
+    margin: 4px 0 2px;
+  }
+  .range-fill {
+    position: absolute;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+  }
+  .range-thumb {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    top: -2px;
+    transform: translateX(-50%);
+  }
+  .range-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  #placeholder-note {
+    padding: 14px 18px;
+    background: rgba(240, 168, 58, 0.07);
+    border-top: 1px solid rgba(240, 168, 58, 0.15);
+    font-size: 11px;
+    color: var(--amber);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ── ANALYSIS PANEL ── */
+  #analysis-panel {
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #analysis-header {
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  #analysis-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  #analysis-badge {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 20px;
+    background: var(--accent-glow);
+    color: var(--accent);
+    border: 1px solid var(--border-accent);
+  }
+
+  #analysis-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  #analysis-body::-webkit-scrollbar { width: 3px; }
+  #analysis-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .analysis-placeholder {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-muted);
+  }
+
+  .analysis-placeholder-icon {
+    font-size: 36px;
+    opacity: 0.3;
+  }
+
+  .analysis-placeholder h3 {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  .analysis-placeholder p {
+    font-size: 13px;
+    line-height: 1.6;
+    max-width: 280px;
+  }
+
+  /* Analysis content blocks */
+  .analysis-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .analysis-section-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  .analysis-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+
+  .signal-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .signal-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .signal-label {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .signal-value {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .verdict-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+  }
+
+  .verdict-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .verdict-text {
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  /* Hidden elements */
+  .hidden { display: none !important; }
+
+  /* API Config modal */
+  #api-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  #api-modal.open { display: flex; }
+
+  #api-modal-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    width: 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  #api-modal-box h2 { font-size: 16px; font-weight: 600; }
+  #api-modal-box p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+
+  #api-key-input {
+    width: 100%;
+    height: 40px;
+    background: var(--bg-surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-family: var(--font);
+    font-size: 13px;
+    padding: 0 14px;
+    outline: none;
+  }
+  #api-key-input:focus { border-color: var(--accent); }
+
+  .modal-btns { display: flex; gap: 8px; }
+
+  .btn-primary {
+    flex: 1;
+    height: 38px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .btn-primary:hover { opacity: 0.88; }
+
+  .btn-secondary {
+    height: 38px;
+    padding: 0 16px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-family: var(--font);
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-secondary:hover { background: var(--bg-surface); }
+
+  @media (max-width: 800px) {
+    #content-grid { grid-template-columns: 1fr; }
+    #analysis-panel { min-height: 300px; }
+  }
+</style>
 </head>
 <body>
-    <h1>Stock Analysis</h1>
-    <form id="analysis-form">
-        <input id="symbol" name="symbol" placeholder="AAPL" required>
-        <button type="submit">Analyze</button>
-    </form>
 
-    <h2>Stock Information</h2>
-    <pre id="stock-info">No analysis yet.</pre>
+<!-- TOP BAR -->
+<header id="topbar">
+  <button id="sidebar-toggle" onclick="toggleSidebar()" title="Verlauf ein-/ausblenden">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <rect x="2" y="4.5" width="14" height="1.5" rx="0.75" fill="currentColor"/>
+      <rect x="2" y="8.25" width="14" height="1.5" rx="0.75" fill="currentColor"/>
+      <rect x="2" y="12" width="14" height="1.5" rx="0.75" fill="currentColor"/>
+    </svg>
+  </button>
 
-    <h2>AI Analysis</h2>
-    <pre id="analysis"></pre>
+  <div id="logo-area">
+    <div id="logo-icon">Ar</div>
+    <div id="logo-text">Argus<span> Analytics</span></div>
+  </div>
 
-    <script>
-        const form = document.getElementById("analysis-form");
-        const stockInfo = document.getElementById("stock-info");
-        const analysis = document.getElementById("analysis");
+</header>
 
-        form.addEventListener("submit", async (event) => {
-            event.preventDefault();
-            stockInfo.className = "";
-            analysis.textContent = "Loading...";
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 45000);
+<!-- MAIN LAYOUT -->
+<div id="layout">
 
-            const symbol = document.getElementById("symbol").value;
-            let response;
-            let data;
-            try {
-                response = await fetch("/analyze", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ symbol }),
-                    signal: controller.signal
-                });
-                data = await response.json();
-            } catch (error) {
-                stockInfo.className = "error";
-                stockInfo.textContent = "Analysis timed out or the server did not respond.";
-                analysis.textContent = "";
-                return;
-            } finally {
-                clearTimeout(timeout);
-            }
+  <!-- SIDEBAR -->
+  <aside id="sidebar">
+    <div id="sidebar-header">Verlauf</div>
+    <div id="history-list">
+      <div class="history-empty" id="history-empty">
+        Noch keine Suchen.<br>Beginne mit einem Tickersymbol.
+      </div>
+      <!-- history items injected here -->
+    </div>
+    <div id="sidebar-footer">
+      <span id="history-count">0 Einträge</span>
+    </div>
+  </aside>
 
-            if (!response.ok) {
-                stockInfo.className = "error";
-                stockInfo.textContent = data.error || "Request failed";
-                analysis.textContent = "";
-                return;
-            }
+  <!-- MAIN CONTENT -->
+  <main id="main">
 
-            stockInfo.textContent = JSON.stringify({
-                symbol: data.symbol,
-                company_name: data.company_name,
-                created_at: data.created_at,
-                stock_data: data.stock_data
-            }, null, 2);
-            analysis.textContent = data.analysis;
-        });
-    </script>
+    <!-- SEARCH ROW -->
+    <div id="search-row">
+      <div id="search-wrap">
+        <span id="search-icon">🔍</span>
+        <input
+          id="search-input"
+          type="text"
+          placeholder="Stock symbol suchen …"
+          maxlength="10"
+          autocomplete="off"
+          onkeydown="if(event.key==='Enter') searchSymbol()"
+        />
+      </div>
+      <button id="search-btn" onclick="searchSymbol()">Analysieren</button>
+      <div id="api-status">
+      </div>
+    </div>
+
+    <!-- CONTENT GRID -->
+    <div id="content-grid">
+
+      <!-- STOCK DATA PANEL -->
+      <section id="stock-panel">
+        <div id="stock-header">
+          <div id="stock-symbol-row">
+            <span id="stock-symbol" style="color: var(--text-muted); font-size:16px; font-weight:500;">— Kein Symbol gewählt</span>
+          </div>
+          <div id="stock-price-row" class="hidden">
+            <span id="stock-price">—</span>
+            <span id="stock-change" class="change-neutral">—</span>
+          </div>
+        </div>
+
+        <div id="stock-body">
+          <div style="color: var(--text-muted); font-size: 13px; padding: 20px 0; text-align:center; line-height:1.7;">
+            Gib ein Tickersymbol ein<br>um Kursdaten zu laden.
+          </div>
+        </div>
+
+        <div id="placeholder-note">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M6 5v3M6 4v.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+          Placeholder-Daten · API-Key unter dem Schlüsselsymbol hinterlegen
+        </div>
+      </section>
+
+      <!-- ANALYSIS PANEL -->
+      <section id="analysis-panel">
+        <div id="analysis-header">
+          <span id="analysis-title">Analyse</span>
+          <span id="analysis-badge">Bereit</span>
+        </div>
+
+        <div id="analysis-body">
+          <div class="analysis-placeholder" id="analysis-placeholder">
+            <div class="analysis-placeholder-icon">📈</div>
+            <h3>Noch keine Analyse</h3>
+            <p>Suche nach einem Börsensymbol – die Datenanalyse erscheint hier automatisch.</p>
+          </div>
+          <div id="analysis-content" class="hidden"></div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
 </body>
 </html>
