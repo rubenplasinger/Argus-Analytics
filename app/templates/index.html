@@ -1,4 +1,5 @@
-<!doctype html>
+<!--API Settings sind in Zeile 867-->
+<!-- Alte Version <!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
@@ -73,5 +74,1097 @@
             analysis.textContent = data.analysis;
         });
     </script>
+</body>
+</html>
+-->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Argus Analytics</title>
+<style>
+  :root {
+    --bg: #0d0f14;
+    --bg-surface: #141720;
+    --bg-card: #1a1e2b;
+    --bg-card-hover: #1f2436;
+    --accent: #4f8ef7;
+    --accent-dim: #2a4d99;
+    --accent-glow: rgba(79, 142, 247, 0.15);
+    --text-primary: #e8ecf5;
+    --text-secondary: #8892aa;
+    --text-muted: #545e72;
+    --border: rgba(255,255,255,0.07);
+    --border-accent: rgba(79, 142, 247, 0.3);
+    --green: #2ecc8a;
+    --green-dim: rgba(46, 204, 138, 0.12);
+    --red: #e85555;
+    --red-dim: rgba(232, 85, 85, 0.12);
+    --amber: #f0a83a;
+    --sidebar-width: 220px;
+    --topbar-height: 52px;
+    --radius: 14px;
+    --font: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text-primary);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── TOPBAR ── */
+  #topbar {
+    height: var(--topbar-height);
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    flex-shrink: 0;
+    z-index: 100;
+    gap: 12px;
+  }
+
+  #sidebar-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    transition: background 0.15s, color 0.15s;
+  }
+  #sidebar-toggle:hover { background: var(--bg-card); color: var(--text-primary); }
+
+  #logo-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  #logo-icon {
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(135deg, var(--accent) 0%, #7b5cf7 100%);
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.5px;
+    flex-shrink: 0;
+  }
+
+  #logo-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.2px;
+  }
+
+  #logo-text span {
+    color: var(--accent);
+  }
+
+  #topbar-nav {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  #topbar-nav a {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    padding: 5px 10px;
+    border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
+  }
+  #topbar-nav a:hover { background: var(--bg-card); color: var(--text-primary); }
+  #topbar-nav .sep { color: var(--text-muted); font-size: 11px; }
+
+  /* ── BODY LAYOUT ── */
+  #layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    width: var(--sidebar-width);
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    transition: width 0.25s cubic-bezier(0.4,0,0.2,1), opacity 0.2s;
+    overflow: hidden;
+  }
+
+  #sidebar.collapsed {
+    width: 0;
+    opacity: 0;
+    border-right: none;
+  }
+
+  #sidebar-header {
+    padding: 14px 16px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    white-space: nowrap;
+  }
+
+  #history-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 8px 16px;
+  }
+
+  #history-list::-webkit-scrollbar { width: 4px; }
+  #history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .history-item:hover { background: var(--bg-card-hover); }
+  .history-item:active { background: var(--bg-card); }
+
+  .history-ticker {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    min-width: 38px;
+  }
+
+  .history-name {
+    font-size: 12px;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .history-empty {
+    padding: 20px 16px;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  #sidebar-footer {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  /* ── MAIN ── */
+  #main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 20px;
+    gap: 16px;
+  }
+
+  /* ── SEARCH ROW ── */
+  #search-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  #search-wrap {
+    position: relative;
+    flex: 1;
+    max-width: 420px;
+  }
+
+  #search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+
+  #search-input {
+    width: 100%;
+    height: 42px;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-family: var(--font);
+    font-size: 14px;
+    padding: 0 44px 0 42px;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  #search-input::placeholder {
+    color: var(--text-muted);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  #search-input:focus {
+    border-color: var(--accent);
+    background: var(--bg-card-hover);
+  }
+
+  #search-btn {
+    height: 42px;
+    padding: 0 18px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    white-space: nowrap;
+  }
+  #search-btn:hover { opacity: 0.88; }
+  #search-btn:active { transform: scale(0.97); }
+
+  #api-status {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--amber);
+  }
+  .status-dot.live { background: var(--green); }
+
+  /* ── CONTENT GRID ── */
+  #content-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 16px;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* ── STOCK DATA PANEL ── */
+  #stock-panel {
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #stock-header {
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  #stock-symbol-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+
+  #stock-symbol {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+  }
+
+  #stock-name {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  #stock-price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  #stock-price {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -1px;
+  }
+
+  #stock-change {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+  }
+
+  .change-up { background: var(--green-dim); color: var(--green); }
+  .change-down { background: var(--red-dim); color: var(--red); }
+  .change-neutral { background: rgba(255,255,255,0.06); color: var(--text-muted); }
+
+  #stock-body {
+    padding: 14px 18px;
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #stock-body::-webkit-scrollbar { width: 3px; }
+  #stock-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .metric-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-top: 6px;
+    margin-bottom: 2px;
+  }
+
+  .metric-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .metric-row:last-child { border-bottom: none; }
+
+  .metric-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .metric-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .metric-value.up { color: var(--green); }
+  .metric-value.down { color: var(--red); }
+
+  /* Range bar */
+  .range-bar-wrap {
+    margin: 2px 0 8px;
+  }
+  .range-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    position: relative;
+    margin: 4px 0 2px;
+  }
+  .range-fill {
+    position: absolute;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+  }
+  .range-thumb {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    top: -2px;
+    transform: translateX(-50%);
+  }
+  .range-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  #placeholder-note {
+    padding: 14px 18px;
+    background: rgba(240, 168, 58, 0.07);
+    border-top: 1px solid rgba(240, 168, 58, 0.15);
+    font-size: 11px;
+    color: var(--amber);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ── ANALYSIS PANEL ── */
+  #analysis-panel {
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #analysis-header {
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  #analysis-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  #analysis-badge {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 20px;
+    background: var(--accent-glow);
+    color: var(--accent);
+    border: 1px solid var(--border-accent);
+  }
+
+  #analysis-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  #analysis-body::-webkit-scrollbar { width: 3px; }
+  #analysis-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .analysis-placeholder {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-muted);
+  }
+
+  .analysis-placeholder-icon {
+    font-size: 36px;
+    opacity: 0.3;
+  }
+
+  .analysis-placeholder h3 {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  .analysis-placeholder p {
+    font-size: 13px;
+    line-height: 1.6;
+    max-width: 280px;
+  }
+
+  /* Analysis content blocks */
+  .analysis-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .analysis-section-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  .analysis-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+
+  .signal-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .signal-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .signal-label {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .signal-value {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .verdict-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+  }
+
+  .verdict-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .verdict-text {
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  /* Hidden elements */
+  .hidden { display: none !important; }
+
+  /* API Config modal */
+  #api-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  #api-modal.open { display: flex; }
+
+  #api-modal-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    width: 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  #api-modal-box h2 { font-size: 16px; font-weight: 600; }
+  #api-modal-box p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+
+  #api-key-input {
+    width: 100%;
+    height: 40px;
+    background: var(--bg-surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-family: var(--font);
+    font-size: 13px;
+    padding: 0 14px;
+    outline: none;
+  }
+  #api-key-input:focus { border-color: var(--accent); }
+
+  .modal-btns { display: flex; gap: 8px; }
+
+  .btn-primary {
+    flex: 1;
+    height: 38px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .btn-primary:hover { opacity: 0.88; }
+
+  .btn-secondary {
+    height: 38px;
+    padding: 0 16px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-family: var(--font);
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-secondary:hover { background: var(--bg-surface); }
+
+  @media (max-width: 800px) {
+    #content-grid { grid-template-columns: 1fr; }
+    #analysis-panel { min-height: 300px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<header id="topbar">
+  <button id="sidebar-toggle" onclick="toggleSidebar()" title="Verlauf ein-/ausblenden">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <rect x="2" y="4.5" width="14" height="1.5" rx="0.75" fill="currentColor"/>
+      <rect x="2" y="8.25" width="14" height="1.5" rx="0.75" fill="currentColor"/>
+      <rect x="2" y="12" width="14" height="1.5" rx="0.75" fill="currentColor"/>
+    </svg>
+  </button>
+
+  <div id="logo-area">
+    <div id="logo-icon">Ar</div>
+    <div id="logo-text">Argus<span> Analytics</span></div>
+  </div>
+
+</header>
+
+<!-- MAIN LAYOUT -->
+<div id="layout">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar">
+    <div id="sidebar-header">Verlauf</div>
+    <div id="history-list">
+      <div class="history-empty" id="history-empty">
+        Noch keine Suchen.<br>Beginne mit einem Tickersymbol.
+      </div>
+      <!-- history items injected here -->
+    </div>
+    <div id="sidebar-footer">
+      <span id="history-count">0 Einträge</span>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main id="main">
+
+    <!-- SEARCH ROW -->
+    <div id="search-row">
+      <div id="search-wrap">
+        <span id="search-icon"></span>
+        <input
+          id="search-input"
+          type="text"
+          placeholder="🔍  Stock symbol suchen …"
+          maxlength="10"
+          autocomplete="off"
+          onkeydown="if(event.key==='Enter') searchSymbol()"
+        />
+      </div>
+      <button id="search-btn" onclick="searchSymbol()">Analysieren</button>
+      <div id="api-status">
+      </div>
+    </div>
+
+    <!-- CONTENT GRID -->
+    <div id="content-grid">
+
+      <!-- STOCK DATA PANEL -->
+      <section id="stock-panel">
+        <div id="stock-header">
+          <div id="stock-symbol-row">
+            <span id="stock-symbol" style="color: var(--text-muted); font-size:16px; font-weight:500;">— Kein Symbol gewählt</span>
+          </div>
+          <div id="stock-price-row" class="hidden">
+            <span id="stock-price">—</span>
+            <span id="stock-change" class="change-neutral">—</span>
+          </div>
+        </div>
+
+        <div id="stock-body">
+          <div style="color: var(--text-muted); font-size: 13px; padding: 20px 0; text-align:center; line-height:1.7;">
+            Gib ein Tickersymbol ein<br>um Kursdaten zu laden.
+          </div>
+        </div>
+
+        <div id="placeholder-note">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M6 5v3M6 4v.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+          Placeholder-Daten · API-Key unter dem Schlüsselsymbol hinterlegen
+        </div>
+      </section>
+
+      <!-- ANALYSIS PANEL -->
+      <section id="analysis-panel">
+        <div id="analysis-header">
+          <span id="analysis-title">Analyse</span>
+          <span id="analysis-badge">Bereit</span>
+        </div>
+
+        <div id="analysis-body">
+          <div class="analysis-placeholder" id="analysis-placeholder">
+            <div class="analysis-placeholder-icon">📈</div>
+            <h3>Noch keine Analyse</h3>
+            <p>Suche nach einem Börsensymbol – die Datenanalyse erscheint hier automatisch.</p>
+          </div>
+          <div id="analysis-content" class="hidden"></div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+
+
+<script>
+  // ── State ──────────────────────────────────────────────
+  const STORAGE_KEY = 'argus_history';
+  const APIKEY_KEY  = 'argus_apikey';
+  let sidebarOpen = true;
+  let history_data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  let apiKey = localStorage.getItem(APIKEY_KEY) || '';
+
+
+  // ── Sidebar toggle ──────────────────────────────────────
+  function toggleSidebar() {
+    sidebarOpen = !sidebarOpen;
+    document.getElementById('sidebar').classList.toggle('collapsed', !sidebarOpen);
+  }
+
+  // ── History ─────────────────────────────────────────────
+  function renderHistory() {
+    const list = document.getElementById('history-list');
+    const empty = document.getElementById('history-empty');
+    const countEl = document.getElementById('history-count');
+
+    countEl.textContent = history_data.length + ' Einträge';
+
+    const existing = list.querySelectorAll('.history-item');
+    existing.forEach(e => e.remove());
+
+    if (history_data.length === 0) {
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    history_data.slice().reverse().forEach(item => {
+      const el = document.createElement('div');
+      el.className = 'history-item';
+      el.innerHTML = `
+        <span class="history-ticker">${item.symbol}</span>
+        <span class="history-name">${item.name || item.symbol}</span>
+      `;
+      el.onclick = () => loadSymbol(item.symbol);
+      list.appendChild(el);
+    });
+  }
+
+  function addHistory(symbol, name) {
+    history_data = history_data.filter(i => i.symbol !== symbol);
+    history_data.push({ symbol, name, ts: Date.now() });
+    if (history_data.length > 30) history_data.shift();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(history_data));
+    renderHistory();
+  }
+
+  // ── Search ──────────────────────────────────────────────
+  function searchSymbol() {
+    const val = document.getElementById('search-input').value.trim().toUpperCase();
+    if (!val) return;
+    loadSymbol(val);
+  }
+
+  function loadSymbol(symbol) {
+    document.getElementById('search-input').value = symbol;
+    const data = PLACEHOLDER[symbol] || generatePlaceholder(symbol);
+    renderStockData(symbol, data);
+    renderAnalysis(symbol, data);
+    addHistory(symbol, data.name);
+  }
+
+  function generatePlaceholder(symbol) {
+    const base = 50 + Math.random() * 450;
+    const chg = (Math.random() - 0.5) * 10;
+    const ath = base * (1.2 + Math.random() * 0.5);
+    const atl = base * (0.1 + Math.random() * 0.3);
+    const wh52 = base * (1.05 + Math.random() * 0.2);
+    const wl52 = base * (0.7 + Math.random() * 0.15);
+    return {
+      name: symbol + ' Corp. (Placeholder)',
+      price: +base.toFixed(2),
+      change: +chg.toFixed(2),
+      changePct: +(chg / base * 100).toFixed(2),
+      ath: +ath.toFixed(2), atl: +atl.toFixed(2),
+      wh52: +wh52.toFixed(2), wl52: +wl52.toFixed(2),
+      weekHigh: +(base * 1.02).toFixed(2), weekLow: +(base * 0.98).toFixed(2),
+      open: +(base - chg * 0.5).toFixed(2), prevClose: +(base - chg).toFixed(2),
+      marketCap: '—', pe: '—',
+      volume: '—', avgVolume: '—',
+      dividend: '—', eps: '—',
+      analysis: {
+        rating: 'Keine Echtzeitdaten',
+        ratingColor: 'var(--text-muted)',
+        summary: `Für das Symbol „${symbol}" liegen keine Placeholder-Daten vor. Hinterlege einen gültigen API-Key, um Echtzeit-Fundamentaldaten und technische Analyse zu laden. Probierte Symbole mit Daten: AAPL, TSLA, MSFT.`,
+        signals: [
+          { label: 'RSI (14)', value: '—', color: 'var(--text-muted)' },
+          { label: 'MACD', value: '—', color: 'var(--text-muted)' },
+          { label: 'MA 50', value: '—', color: 'var(--text-muted)' },
+          { label: 'MA 200', value: '—', color: 'var(--text-muted)' },
+          { label: 'Volumen', value: '—', color: 'var(--text-muted)' },
+          { label: 'Momentum', value: '—', color: 'var(--text-muted)' },
+        ]
+      }
+    };
+  }
+
+  function fmt(n) {
+    if (n === '—' || n === undefined || n === null) return '—';
+    return typeof n === 'number' ? n.toLocaleString('de-AT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : n;
+  }
+
+  function rangePos(current, low, high) {
+    if (high === low) return 50;
+    return Math.min(100, Math.max(0, ((current - low) / (high - low)) * 100));
+  }
+
+  function renderStockData(symbol, d) {
+    const changeUp = d.change >= 0;
+    const sign = d.change >= 0 ? '+' : '';
+
+    document.getElementById('stock-symbol').outerHTML =
+      `<span id="stock-symbol">${symbol}</span>`;
+    document.getElementById('stock-symbol').style.cssText = '';
+
+    // Re-query after replacement
+    const symRow = document.getElementById('stock-symbol-row');
+    symRow.innerHTML = `
+      <span id="stock-symbol" style="font-size:22px;font-weight:700;letter-spacing:-0.5px">${symbol}</span>
+      <span style="font-size:13px;color:var(--text-secondary)">${d.name}</span>
+    `;
+
+    const priceRow = document.getElementById('stock-price-row');
+    priceRow.classList.remove('hidden');
+    priceRow.innerHTML = `
+      <span id="stock-price">${fmt(d.price)} <span style="font-size:13px;color:var(--text-muted);font-weight:400">USD</span></span>
+      <span id="stock-change" class="${changeUp ? 'change-up' : 'change-down'}">${sign}${fmt(d.change)} (${sign}${Math.abs(d.changePct).toFixed(2)}%)</span>
+    `;
+
+    const pos52 = rangePos(d.price, d.wl52, d.wh52);
+    const posWeek = rangePos(d.price, d.weekLow, d.weekHigh);
+
+    document.getElementById('stock-body').innerHTML = `
+      <div class="metric-section-label">Preisspannen</div>
+
+      <div style="margin-bottom:4px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:2px">
+          <span style="font-size:11px;color:var(--text-secondary)">52-Wochen-Spanne</span>
+          <span style="font-size:11px;color:var(--text-muted)">${fmt(d.wl52)} – ${fmt(d.wh52)}</span>
+        </div>
+        <div class="range-bar">
+          <div class="range-fill" style="left:0;width:${pos52}%"></div>
+          <div class="range-thumb" style="left:${pos52}%"></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:2px">
+          <span style="font-size:11px;color:var(--text-secondary)">Wochens-Spanne</span>
+          <span style="font-size:11px;color:var(--text-muted)">${fmt(d.weekLow)} – ${fmt(d.weekHigh)}</span>
+        </div>
+        <div class="range-bar">
+          <div class="range-fill" style="background:var(--accent-dim);left:0;width:${posWeek}%"></div>
+          <div class="range-thumb" style="background:var(--text-muted);left:${posWeek}%"></div>
+        </div>
+      </div>
+
+      <div class="metric-section-label">Allzeit</div>
+      <div class="metric-row">
+        <span class="metric-label">All-Time High</span>
+        <span class="metric-value up">${fmt(d.ath)} USD</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">All-Time Low</span>
+        <span class="metric-value down">${fmt(d.atl)} USD</span>
+      </div>
+
+      <div class="metric-section-label">Tagesdaten</div>
+      <div class="metric-row">
+        <span class="metric-label">Eröffnung</span>
+        <span class="metric-value">${fmt(d.open)} USD</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Vortagskurs</span>
+        <span class="metric-value">${fmt(d.prevClose)} USD</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Volumen</span>
+        <span class="metric-value">${d.volume}</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Ø Volumen</span>
+        <span class="metric-value">${d.avgVolume}</span>
+      </div>
+
+      <div class="metric-section-label">Fundamentaldaten</div>
+      <div class="metric-row">
+        <span class="metric-label">Marktkapitalisierung</span>
+        <span class="metric-value">${d.marketCap}</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">KGV (P/E)</span>
+        <span class="metric-value">${d.pe}</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">EPS</span>
+        <span class="metric-value">${d.eps !== '—' ? fmt(d.eps) + ' USD' : '—'}</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Dividende p.a.</span>
+        <span class="metric-value">${d.dividend !== '—' && d.dividend > 0 ? fmt(d.dividend) + ' USD' : d.dividend === 0 ? 'keine' : '—'}</span>
+      </div>
+    `;
+  }
+
+  function renderAnalysis(symbol, d) {
+    const a = d.analysis;
+    document.getElementById('analysis-title').textContent = `Analyse – ${symbol}`;
+    document.getElementById('analysis-badge').textContent = a.rating;
+    document.getElementById('analysis-badge').style.cssText = `
+      font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;
+      background: ${a.ratingColor}22;
+      color: ${a.ratingColor};
+      border: 1px solid ${a.ratingColor}44;
+    `;
+
+    document.getElementById('analysis-placeholder').classList.add('hidden');
+    const content = document.getElementById('analysis-content');
+    content.classList.remove('hidden');
+
+    const signalCards = a.signals.map(s => `
+      <div class="signal-card">
+        <span class="signal-label">${s.label}</span>
+        <span class="signal-value" style="color:${s.color}">${s.value}</span>
+      </div>
+    `).join('');
+
+    content.innerHTML = `
+      <div class="analysis-section">
+        <div class="analysis-section-title">Gesamtbewertung</div>
+        <div class="verdict-bar">
+          <div class="verdict-dot" style="background:${a.ratingColor}"></div>
+          <div class="verdict-text" style="color:${a.ratingColor}">${a.rating}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-left:auto">Placeholder · kein Anlageberatung</div>
+        </div>
+      </div>
+
+      <div class="analysis-section">
+        <div class="analysis-section-title">Zusammenfassung</div>
+        <div class="analysis-text">${a.summary}</div>
+      </div>
+
+      <div class="analysis-section">
+        <div class="analysis-section-title">Technische Signale</div>
+        <div class="signal-cards">${signalCards}</div>
+      </div>
+
+      <div class="analysis-section" style="margin-top:4px">
+        <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;">
+          <div style="font-size:11px;color:var(--text-muted);line-height:1.6">
+            ⚠️ <strong style="color:var(--amber)">Haftungsausschluss:</strong>
+            Alle angezeigten Daten und Analysen sind rein informeller Natur und stellen keine Anlageberatung dar.
+            Investitionsentscheidungen sollten stets auf Basis eigener Recherche und professioneller Beratung getroffen werden.
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // ── API Modal ─────────────────────────────────────────
+  function openApiModal() {
+    document.getElementById('api-key-input').value = apiKey;
+    document.getElementById('api-modal').classList.add('open');
+  }
+
+  function closeApiModal() {
+    document.getElementById('api-modal').classList.remove('open');
+  }
+
+  function saveApiKey() {
+    const val = document.getElementById('api-key-input').value.trim();
+    apiKey = val;
+    localStorage.setItem(APIKEY_KEY, val);
+    updateApiStatus();
+    closeApiModal();
+  }
+
+  function updateApiStatus() {
+    const dot = document.getElementById('status-dot');
+    const text = document.getElementById('status-text');
+    if (apiKey) {
+      dot.classList.add('live');
+      text.textContent = 'API-Key aktiv';
+    } else {
+      dot.classList.remove('live');
+      text.textContent = 'Placeholder-Modus';
+    }
+  }
+
+  document.getElementById('api-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeApiModal();
+  });
+
+  // ── Init ──────────────────────────────────────────────
+  renderHistory();
+  updateApiStatus();
+</script>
 </body>
 </html>
