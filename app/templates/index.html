@@ -808,6 +808,8 @@
       </div>
       <button id="search-btn" onclick="searchSymbol()">Analysieren</button>
       <div id="api-status">
+        <span id="status-dot" class="status-dot live"></span>
+        <span id="status-text">Backend verbunden</span>
       </div>
     </div>
 
@@ -837,7 +839,7 @@
             <circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/>
             <path d="M6 5v3M6 4v.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
           </svg>
-          Placeholder-Daten · API-Key unter dem Schlüsselsymbol hinterlegen
+          Live-Daten vom Backend · Analyse über /analyze
         </div>
       </section>
 
@@ -923,12 +925,41 @@
     loadSymbol(val);
   }
 
-  function loadSymbol(symbol) {
+  async function loadSymbol(symbol) {
     document.getElementById('search-input').value = symbol;
-    const data = PLACEHOLDER[symbol] || generatePlaceholder(symbol);
-    renderStockData(symbol, data);
-    renderAnalysis(symbol, data);
-    addHistory(symbol, data.name);
+    setLoading(symbol);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 45000);
+
+    try {
+      const response = await fetch('/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol }),
+        signal: controller.signal
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload.error || 'Analyse konnte nicht geladen werden.');
+      }
+
+      const data = normalizeBackendResponse(payload);
+      renderStockData(data.symbol, data);
+      renderAnalysis(data.symbol, data);
+      addHistory(data.symbol, data.name);
+      setApiStatus('Backend verbunden', 'live');
+    } catch (error) {
+      const message = error.name === 'AbortError'
+        ? 'Die Anfrage wurde abgebrochen oder hat zu lange gedauert.'
+        : error.message;
+      renderError(symbol, message);
+      setApiStatus('Backend-Fehler', 'error');
+    } finally {
+      clearTimeout(timeout);
+      setSearchBusy(false);
+    }
   }
 
   function generatePlaceholder(symbol) {
@@ -971,31 +1002,149 @@
     return typeof n === 'number' ? n.toLocaleString('de-AT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : n;
   }
 
+  function fmtCompact(n) {
+    if (n === undefined || n === null || n === '') return '—';
+    if (typeof n !== 'number') return n;
+    return Intl.NumberFormat('de-AT', { notation: 'compact', maximumFractionDigits: 2 }).format(n);
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    }[ch]));
+  }
+
+  function normalizeBackendResponse(payload) {
+    const stock = payload.stock_data || {};
+    const currency = stock.currency || 'USD';
+
+    return {
+      symbol: payload.symbol,
+      name: payload.company_name || payload.symbol,
+      price: stock.current_price ?? null,
+      currency,
+      change: null,
+      changePct: null,
+      ath: null,
+      atl: null,
+      wh52: stock.fifty_two_week_high ?? null,
+      wl52: stock.fifty_two_week_low ?? null,
+      weekHigh: null,
+      weekLow: null,
+      open: null,
+      prevClose: null,
+      marketCap: stock.market_cap ?? null,
+      pe: stock.pe_ratio ?? null,
+      volume: null,
+      avgVolume: null,
+      dividend: null,
+      eps: null,
+      analysis: {
+        rating: payload.cached ? 'Heute gecached' : 'Neu analysiert',
+        ratingColor: payload.cached ? 'var(--amber)' : 'var(--green)',
+        summary: payload.analysis || 'Keine Analyse vom Backend erhalten.',
+        signals: [
+          { label: 'Kurs', value: stock.current_price ? `${fmt(stock.current_price)} ${currency}` : '—', color: 'var(--text-primary)' },
+          { label: 'KGV', value: stock.pe_ratio ? fmt(stock.pe_ratio) : '—', color: 'var(--text-primary)' },
+          { label: 'Market Cap', value: stock.market_cap ? fmtCompact(stock.market_cap) : '—', color: 'var(--text-primary)' },
+          { label: '52W High', value: stock.fifty_two_week_high ? fmt(stock.fifty_two_week_high) : '—', color: 'var(--green)' },
+          { label: '52W Low', value: stock.fifty_two_week_low ? fmt(stock.fifty_two_week_low) : '—', color: 'var(--red)' },
+          { label: 'Quelle', value: payload.cached ? 'Cache' : 'Live', color: payload.cached ? 'var(--amber)' : 'var(--green)' },
+        ]
+      }
+    };
+  }
+
+  function setSearchBusy(isBusy) {
+    const button = document.getElementById('search-btn');
+    button.disabled = isBusy;
+    button.style.opacity = isBusy ? '0.65' : '';
+    button.style.cursor = isBusy ? 'wait' : '';
+    button.textContent = isBusy ? 'Laedt...' : 'Analysieren';
+  }
+
+  function setApiStatus(text, state = 'live') {
+    const dot = document.getElementById('status-dot');
+    const label = document.getElementById('status-text');
+    dot.classList.toggle('live', state === 'live');
+    dot.style.background = state === 'error' ? 'var(--red)' : '';
+    label.textContent = text;
+  }
+
+  function setLoading(symbol) {
+    setSearchBusy(true);
+    setApiStatus('Analyse laeuft...', 'pending');
+    document.getElementById('stock-symbol-row').innerHTML = `
+      <span id="stock-symbol" style="font-size:22px;font-weight:700;letter-spacing:-0.5px">${escapeHtml(symbol)}</span>
+      <span style="font-size:13px;color:var(--text-secondary)">Lade Backend-Daten...</span>
+    `;
+    document.getElementById('stock-price-row').classList.add('hidden');
+    document.getElementById('stock-body').innerHTML = `
+      <div style="color: var(--text-muted); font-size: 13px; padding: 20px 0; text-align:center; line-height:1.7;">
+        Kursdaten und KI-Analyse werden geladen.
+      </div>
+    `;
+    document.getElementById('analysis-title').textContent = `Analyse - ${symbol}`;
+    document.getElementById('analysis-badge').textContent = 'Laedt';
+    document.getElementById('analysis-placeholder').classList.add('hidden');
+    const content = document.getElementById('analysis-content');
+    content.classList.remove('hidden');
+    content.innerHTML = `<div class="analysis-text">Backend-Anfrage an /analyze laeuft...</div>`;
+  }
+
+  function renderError(symbol, message) {
+    document.getElementById('stock-symbol-row').innerHTML = `
+      <span id="stock-symbol" style="font-size:22px;font-weight:700;letter-spacing:-0.5px">${escapeHtml(symbol)}</span>
+      <span style="font-size:13px;color:var(--red)">Fehler</span>
+    `;
+    document.getElementById('stock-price-row').classList.add('hidden');
+    document.getElementById('stock-body').innerHTML = `
+      <div style="color: var(--red); font-size: 13px; padding: 20px 0; text-align:center; line-height:1.7;">
+        ${escapeHtml(message)}
+      </div>
+    `;
+    document.getElementById('analysis-title').textContent = `Analyse - ${symbol}`;
+    document.getElementById('analysis-badge').textContent = 'Fehler';
+    document.getElementById('analysis-badge').style.cssText = `
+      font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;
+      background: var(--red-dim); color: var(--red); border: 1px solid var(--red);
+    `;
+    document.getElementById('analysis-placeholder').classList.add('hidden');
+    const content = document.getElementById('analysis-content');
+    content.classList.remove('hidden');
+    content.innerHTML = `<div class="analysis-text">${escapeHtml(message)}</div>`;
+  }
+
   function rangePos(current, low, high) {
-    if (high === low) return 50;
+    if (typeof current !== 'number' || typeof low !== 'number' || typeof high !== 'number' || high === low) return 50;
     return Math.min(100, Math.max(0, ((current - low) / (high - low)) * 100));
   }
 
   function renderStockData(symbol, d) {
-    const changeUp = d.change >= 0;
-    const sign = d.change >= 0 ? '+' : '';
+    const hasChange = typeof d.change === 'number' && typeof d.changePct === 'number';
+    const changeUp = hasChange && d.change >= 0;
+    const sign = hasChange && d.change >= 0 ? '+' : '';
 
     document.getElementById('stock-symbol').outerHTML =
-      `<span id="stock-symbol">${symbol}</span>`;
+      `<span id="stock-symbol">${escapeHtml(symbol)}</span>`;
     document.getElementById('stock-symbol').style.cssText = '';
 
     // Re-query after replacement
     const symRow = document.getElementById('stock-symbol-row');
     symRow.innerHTML = `
-      <span id="stock-symbol" style="font-size:22px;font-weight:700;letter-spacing:-0.5px">${symbol}</span>
-      <span style="font-size:13px;color:var(--text-secondary)">${d.name}</span>
+      <span id="stock-symbol" style="font-size:22px;font-weight:700;letter-spacing:-0.5px">${escapeHtml(symbol)}</span>
+      <span style="font-size:13px;color:var(--text-secondary)">${escapeHtml(d.name)}</span>
     `;
 
     const priceRow = document.getElementById('stock-price-row');
     priceRow.classList.remove('hidden');
     priceRow.innerHTML = `
-      <span id="stock-price">${fmt(d.price)} <span style="font-size:13px;color:var(--text-muted);font-weight:400">USD</span></span>
-      <span id="stock-change" class="${changeUp ? 'change-up' : 'change-down'}">${sign}${fmt(d.change)} (${sign}${Math.abs(d.changePct).toFixed(2)}%)</span>
+      <span id="stock-price">${fmt(d.price)} <span style="font-size:13px;color:var(--text-muted);font-weight:400">${escapeHtml(d.currency || 'USD')}</span></span>
+      <span id="stock-change" class="${hasChange ? (changeUp ? 'change-up' : 'change-down') : 'change-neutral'}">${hasChange ? `${sign}${fmt(d.change)} (${sign}${Math.abs(d.changePct).toFixed(2)}%)` : '—'}</span>
     `;
 
     const pos52 = rangePos(d.price, d.wl52, d.wh52);
@@ -1047,29 +1196,29 @@
       </div>
       <div class="metric-row">
         <span class="metric-label">Volumen</span>
-        <span class="metric-value">${d.volume}</span>
+        <span class="metric-value">${fmt(d.volume)}</span>
       </div>
       <div class="metric-row">
         <span class="metric-label">Ø Volumen</span>
-        <span class="metric-value">${d.avgVolume}</span>
+        <span class="metric-value">${fmt(d.avgVolume)}</span>
       </div>
 
       <div class="metric-section-label">Fundamentaldaten</div>
       <div class="metric-row">
         <span class="metric-label">Marktkapitalisierung</span>
-        <span class="metric-value">${d.marketCap}</span>
+        <span class="metric-value">${fmtCompact(d.marketCap)}</span>
       </div>
       <div class="metric-row">
         <span class="metric-label">KGV (P/E)</span>
-        <span class="metric-value">${d.pe}</span>
+        <span class="metric-value">${fmt(d.pe)}</span>
       </div>
       <div class="metric-row">
         <span class="metric-label">EPS</span>
-        <span class="metric-value">${d.eps !== '—' ? fmt(d.eps) + ' USD' : '—'}</span>
+        <span class="metric-value">${d.eps ? fmt(d.eps) + ' USD' : '—'}</span>
       </div>
       <div class="metric-row">
         <span class="metric-label">Dividende p.a.</span>
-        <span class="metric-value">${d.dividend !== '—' && d.dividend > 0 ? fmt(d.dividend) + ' USD' : d.dividend === 0 ? 'keine' : '—'}</span>
+        <span class="metric-value">${d.dividend && d.dividend > 0 ? fmt(d.dividend) + ' USD' : d.dividend === 0 ? 'keine' : '—'}</span>
       </div>
     `;
   }
@@ -1091,8 +1240,8 @@
 
     const signalCards = a.signals.map(s => `
       <div class="signal-card">
-        <span class="signal-label">${s.label}</span>
-        <span class="signal-value" style="color:${s.color}">${s.value}</span>
+        <span class="signal-label">${escapeHtml(s.label)}</span>
+        <span class="signal-value" style="color:${s.color}">${escapeHtml(s.value)}</span>
       </div>
     `).join('');
 
@@ -1101,14 +1250,14 @@
         <div class="analysis-section-title">Gesamtbewertung</div>
         <div class="verdict-bar">
           <div class="verdict-dot" style="background:${a.ratingColor}"></div>
-          <div class="verdict-text" style="color:${a.ratingColor}">${a.rating}</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-left:auto">Placeholder · kein Anlageberatung</div>
+          <div class="verdict-text" style="color:${a.ratingColor}">${escapeHtml(a.rating)}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-left:auto">Backend · keine Anlageberatung</div>
         </div>
       </div>
 
       <div class="analysis-section">
         <div class="analysis-section-title">Zusammenfassung</div>
-        <div class="analysis-text">${a.summary}</div>
+        <div class="analysis-text" style="white-space:pre-wrap">${escapeHtml(a.summary)}</div>
       </div>
 
       <div class="analysis-section">
@@ -1158,13 +1307,16 @@
     }
   }
 
-  document.getElementById('api-modal').addEventListener('click', function(e) {
-    if (e.target === this) closeApiModal();
-  });
+  const apiModal = document.getElementById('api-modal');
+  if (apiModal) {
+    apiModal.addEventListener('click', function(e) {
+      if (e.target === this) closeApiModal();
+    });
+  }
 
   // ── Init ──────────────────────────────────────────────
   renderHistory();
-  updateApiStatus();
+  setApiStatus('Backend verbunden', 'live');
 </script>
 </body>
 </html>

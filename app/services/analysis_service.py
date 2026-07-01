@@ -64,6 +64,9 @@ class AnalysisService:
                     "market_cap": cached_stock.market_cap if cached_stock else None,
                     "pe_ratio": cached_stock.pe_ratio if cached_stock else None,
                     "current_price": cached_stock.current_price if cached_stock else None,
+                    "currency": None,
+                    "fifty_two_week_high": None,
+                    "fifty_two_week_low": None,
                 },
             }
 
@@ -95,5 +98,8 @@ class AnalysisService:
                 "market_cap": stock_record.market_cap,
                 "pe_ratio": stock_record.pe_ratio,
                 "current_price": stock_record.current_price,
+                "currency": stock.get("currency"),
+                "fifty_two_week_high": stock.get("fifty_two_week_high"),
+                "fifty_two_week_low": stock.get("fifty_two_week_low"),
             },
         }

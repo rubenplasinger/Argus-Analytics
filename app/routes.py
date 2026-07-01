@@ -1,5 +1,6 @@
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, current_app, jsonify, render_template, request
 
+from app.db import db
 from app.services.analysis_service import AnalysisService
 from app.services.stock_service import StockLookupError
 
@@ -29,5 +30,9 @@ def analyze():
         return jsonify({"error": str(exc)}), 404
     except RuntimeError as exc:
         return jsonify({"error": str(exc)}), 503
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Unexpected error while analyzing %s", symbol)
+        return jsonify({"error": "unexpected backend error; check the server log"}), 500
 
     return jsonify(result), 201
